@@ -1,23 +1,50 @@
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import config from "@/config";
 import { cn } from "@/lib/utils";
+import { useLoginMutation } from "@/redux/features/auth/auth.api";
 import { useForm, type FieldValues, type SubmitHandler } from "react-hook-form";
-import { Link } from "react-router";
-import { z } from "zod";
+import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
 
-const formSchema = z.object({
-    username: z.string().min(2, {
-        message: "Username must be at least 2 characters.",
-    }),
-})
+// const formSchema = z.object({
+//     username: z.string().min(2, {
+//         message: "Username must be at least 2 characters.",
+//     }),
+// })
 
 const LoginForm = () => {
 
+    const [login] = useLoginMutation();
+    const navigate = useNavigate();
+
     const form = useForm();
 
-    const onSubmit: SubmitHandler<FieldValues> = (data) => {
+    const onSubmit: SubmitHandler<FieldValues> = async (data) => {
         console.log(data);
+        try {
+            const res = await login(data).unwrap();
+            console.log(res.data);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            console.log(err);
+
+            if (err.data.message === "Password does not match") {
+                toast.error("Invalid credentials");
+            }
+
+            if (err.data.message === "User is not verified") {
+                toast.error("Your account is not verified");
+                navigate("/verify", { state: data.email });
+            }
+
+            // if (error.status === 401) {
+            //     toast.error("Your account is not verified");
+            //     navigate("/verify", { state: data.email });
+            // }
+            // toast.error(error?.data?.message || "An unexpected error occurred");
+        }
     }
 
     return (
@@ -81,6 +108,7 @@ const LoginForm = () => {
                 </div>
 
                 <Button
+                    onClick={() => window.open(`${config.baseUrl}/auth/google`)}
                     type="button"
                     variant="outline"
                     className="w-full cursor-pointer"

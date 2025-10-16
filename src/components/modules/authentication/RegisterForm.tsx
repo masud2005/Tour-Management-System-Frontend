@@ -1,32 +1,58 @@
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import Password from "@/components/ui/Password";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRegisterMutation } from "@/redux/features/auth/auth.api";
+import { toast } from "sonner";
 
+//  registerSchema
 const registerSchema = z
     .object({
         name: z
-            .string()
-            .min(3, {
-                error: "Name is too short",
-            })
-            .max(50),
+            .string({ message: "Name must be a string" })
+            .min(3, { message: "Name is too short" })
+            .max(50, { message: "Name must be at most 50 characters long" }),
+
         email: z.email(),
-        password: z.string().min(8, { error: "Password is too short" }),
+
+        password: z
+            .string({ message: "Password must be string" })
+            .min(8, { message: "Password must be at least 8 characters long." })
+            .regex(/^(?=.*[A-Z])/, {
+                message: "Password must contain at least 1 uppercase letter.",
+            })
+            .regex(/^(?=.*[!@#$%^&*])/, {
+                message: "Password must contain at least 1 special character.",
+            })
+            .regex(/^(?=.*\d)/, {
+                message: "Password must contain at least 1 number.",
+            }),
+
         confirmPassword: z
-            .string()
-            .min(8, { error: "Confirm Password is too short" }),
-    }).refine((data) => data.password === data.confirmPassword, {
+            .string({ message: "Confirm Password must be string" })
+            .min(8, { message: "Confirm Password must be at least 8 characters long." }),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
         message: "Passwords don't match",
         path: ["confirmPassword"],
     });
 
 const RegisterForm = () => {
+    const [register] = useRegisterMutation();
+    const navigate = useNavigate();
 
     const form = useForm<z.infer<typeof registerSchema>>({
         resolver: zodResolver(registerSchema),
@@ -38,9 +64,26 @@ const RegisterForm = () => {
         },
     });
 
-    const onSubmit = () => {
+    const onSubmit = async (data: z.infer<typeof registerSchema>) => {
+        const userInfo = {
+            name: data.name,
+            email: data.email,
+            password: data.password,
+        };
 
-    }
+        // console.log(userInfo);
+
+        try {
+            const result = await register(userInfo).unwrap();
+            console.log(result);
+            toast.success("User created successfully");
+            navigate("/verify");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error?.data?.message || "An unexpected error occurred");
+        }
+    };
 
     return (
         <div className={cn("flex flex-col gap-6")}>
@@ -70,6 +113,7 @@ const RegisterForm = () => {
                                 </FormItem>
                             )}
                         />
+
                         <FormField
                             control={form.control}
                             name="email"
@@ -90,6 +134,7 @@ const RegisterForm = () => {
                                 </FormItem>
                             )}
                         />
+
                         <FormField
                             control={form.control}
                             name="password"
@@ -106,6 +151,7 @@ const RegisterForm = () => {
                                 </FormItem>
                             )}
                         />
+
                         <FormField
                             control={form.control}
                             name="confirmPassword"
@@ -122,6 +168,7 @@ const RegisterForm = () => {
                                 </FormItem>
                             )}
                         />
+
                         <Button type="submit" className="w-full">
                             Submit
                         </Button>
